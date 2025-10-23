@@ -1,15 +1,40 @@
 # automated-light-house-system/app.py
 from flask import Flask, request
 import serial
+import serial.tools.list_ports
 import time
 
 app = Flask(__name__)
 
-# ✅ Set up Arduino connection (change COM3 to match your port)
-arduino = serial.Serial('COM9', 9600, timeout=1)
-time.sleep(2)  # Allow Arduino time to reset
+# ✅ Attempt to connect to COM9 with error handling
+def connect_arduino(target_port="COM9", baud_rate=9600):
+    print("🔍 Scanning available COM ports...\n")
+    ports = serial.tools.list_ports.comports()
 
-# 🧠 Single-page app: Flask + HTML combined
+    if not ports:
+        print("❌ No COM ports found. Please connect your Arduino.")
+        return None
+
+    print("Available Ports:")
+    for p in ports:
+        print(f" - {p.device} ({p.description})")
+
+    try:
+        print(f"\n🔗 Trying to connect to {target_port}...")
+        arduino = serial.Serial(target_port, baud_rate, timeout=1)
+        time.sleep(2)
+        print(f"✅ Successfully connected to {target_port}")
+        return arduino
+    except Exception as e:
+        print(f"\n⚠️ Could not open {target_port}: {e}")
+        print("💡 Tip: Ensure no other app (like Arduino IDE) is using it.")
+        return None
+
+
+# Try connecting automatically
+arduino = connect_arduino()
+
+# 🧠 Single-page Flask + HTML
 HTML_PAGE = """
 <!DOCTYPE html>
 <html lang="en">
@@ -43,17 +68,26 @@ HTML_PAGE = """
 
 @app.route("/", methods=["GET", "POST"])
 def index():
+    global arduino
     if request.method == "POST":
         action = request.form.get("action")
 
-        if action == "on":
-            arduino.write(b'1')  # Turn ON LED + Buzzer
-            print("🟢 LED & Buzzer ON")
-        elif action == "off":
-            arduino.write(b'0')  # Turn OFF LED + Buzzer
-            print("🔴 LED & Buzzer OFF")
+        if arduino is None:
+            print("❌ Arduino not connected. Cannot send command.")
+            return "<h3 style='color:red;text-align:center;'>Arduino not connected. Check console logs.</h3>"
+
+        try:
+            if action == "on":
+                arduino.write(b'1')
+                print("🟢 LED & Buzzer ON")
+            elif action == "off":
+                arduino.write(b'0')
+                print("🔴 LED & Buzzer OFF")
+        except Exception as e:
+            print(f"⚠️ Error sending command: {e}")
 
     return HTML_PAGE
+
 
 if __name__ == "__main__":
     app.run(debug=True)
