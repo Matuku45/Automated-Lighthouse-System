@@ -6,7 +6,7 @@ import time
 app = Flask(__name__)
 
 # ✅ Set up Arduino connection (change COM3 to match your port)
-arduino = serial.Serial('COM3', 9600, timeout=1)
+arduino = serial.Serial('COM9', 9600, timeout=1)
 time.sleep(2)  # Allow Arduino time to reset
 
 # 🧠 Single-page app: Flask + HTML combined
