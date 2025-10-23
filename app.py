@@ -3,10 +3,11 @@ from flask import Flask, request
 import serial
 import serial.tools.list_ports
 import time
+import os
 
 app = Flask(__name__)
 
-# ✅ Attempt to connect to COM9 with error handling
+# ✅ Function to connect to Arduino with automatic port detection
 def connect_arduino(target_port="COM9", baud_rate=9600):
     print("🔍 Scanning available COM ports...\n")
     ports = serial.tools.list_ports.comports()
@@ -30,9 +31,10 @@ def connect_arduino(target_port="COM9", baud_rate=9600):
         print("💡 Tip: Ensure no other app (like Arduino IDE) is using it.")
         return None
 
-
-# Try connecting automatically
-arduino = connect_arduino()
+# 🔌 Only connect Arduino once even if Flask reloads (debug=True)
+arduino = None
+if os.environ.get("WERKZEUG_RUN_MAIN") == "true":
+    arduino = connect_arduino()
 
 # 🧠 Single-page Flask + HTML
 HTML_PAGE = """
@@ -78,10 +80,10 @@ def index():
 
         try:
             if action == "on":
-                arduino.write(b'1')
+                arduino.write(b'1')  # Turn on LED & Buzzer
                 print("🟢 LED & Buzzer ON")
             elif action == "off":
-                arduino.write(b'0')
+                arduino.write(b'0')  # Turn off LED & Buzzer
                 print("🔴 LED & Buzzer OFF")
         except Exception as e:
             print(f"⚠️ Error sending command: {e}")
